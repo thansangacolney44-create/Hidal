@@ -6,6 +6,7 @@ export type Song = {
   duration: number; // in seconds
   url: string;
   coverArt: string;
+  createdAt?: any; // To store Firestore timestamp
 };
 
 export type Playlist = {
