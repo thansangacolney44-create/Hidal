@@ -1,0 +1,21 @@
+{
+  "name": "HidalWave",
+  "short_name": "HidalWave",
+  "description": "High-fidelity music streaming",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#115e59",
+  "background_color": "#262626",
+  "start_url": "/",
+  "display": "standalone"
+}
