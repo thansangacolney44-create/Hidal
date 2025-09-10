@@ -1,22 +1,61 @@
-import { AppLayout } from '@/components/layout/app-layout';
+
+'use client';
+
 import { UploadForm } from '@/components/music/upload-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { HardDriveDownload, AlertCircle } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { useState, useEffect } from 'react';
 
 export default function UploadPage() {
+    const [isDbReady, setIsDbReady] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        try {
+            // This is a simple check to see if the Supabase client can be initialized.
+            // If the env vars are missing, this will throw an error.
+            require('@/lib/supabase-client');
+            setIsDbReady(true);
+        } catch (error) {
+            console.error(error);
+            setIsDbReady(false);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    if (isLoading) {
+        return null; // Or a loading spinner
+    }
+
+    if (!isDbReady) {
+        return (
+            <div className="p-8">
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Database Not Connected</AlertTitle>
+                    <AlertDescription>
+                        Cannot upload music because the application is not connected to a database. Please make sure your Supabase environment variables are set correctly in the `.env` file.
+                    </AlertDescription>
+                </Alert>
+            </div>
+        )
+    }
+
   return (
-    <AppLayout>
       <div className="p-4 sm:p-6 md:p-8 space-y-8">
         <div className="space-y-2">
           <h1 className="text-4xl font-bold tracking-tighter">Upload Music</h1>
           <p className="text-muted-foreground max-w-2xl">
-            Add your high-resolution audio files to your library. We support FLAC, WAV, AAC, ALAC, and MP3 (320kbps+).
+            Add your high-resolution audio files to your library. We support FLAC, WAV, AAC, ALAC, and MP3.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="md:col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
             <Card>
               <CardHeader>
                 <CardTitle>Upload from your device</CardTitle>
@@ -36,16 +75,12 @@ export default function UploadPage() {
                 <CardDescription>
                   Connect your Dropbox account to directly access your music.
                 </CardDescription>
-              </CardHeader>
+              </Header>
               <CardContent>
-                <Button className="w-full" variant="secondary" asChild>
+                <Button className="w-full" asChild>
                   <Link href="/import/dropbox">
-                    <span>
-                      <svg className="mr-2 h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                        <path d="M8 3.513l-4.063 2.56L8 8.633l4.063-2.56L8 3.513zM3.937 6.072L0 8.633l4.063 2.56 3.937-2.56-4.063-2.56z m0 5.12l-3.937-2.56L3.937 11.193l4.063 2.56-4.063-2.56z m8.126-5.12L16 8.633l-4.063 2.56-3.937-2.56 4.063-2.56z m0 5.12l3.937-2.56-3.937 2.56-4.063 2.56 4.063-2.56z"/>
-                      </svg>
-                      Connect to Dropbox
-                    </span>
+                    <HardDriveDownload className="mr-2 h-4 w-4" />
+                    Connect to Dropbox
                   </Link>
                 </Button>
               </CardContent>
@@ -53,6 +88,5 @@ export default function UploadPage() {
           </div>
         </div>
       </div>
-    </AppLayout>
   );
 }
