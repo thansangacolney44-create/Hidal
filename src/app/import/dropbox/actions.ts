@@ -17,8 +17,8 @@ export interface DropboxFile {
 }
 
 async function listFiles(path: string = ''): Promise<DropboxFile[]> {
-  if (!ACCESS_TOKEN) {
-    throw new Error('Dropbox access token is not configured. Please set the DROPBOX_ACCESS_TOKEN environment variable.');
+  if (!ACCESS_TOKEN || ACCESS_TOKEN === 'YOUR_DROPBOX_ACCESS_TOKEN') {
+    throw new Error('Dropbox access token is not configured. Please set the DROPBOX_ACCESS_TOKEN environment variable in the .env file.');
   }
 
   const response = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
