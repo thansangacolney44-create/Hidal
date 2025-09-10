@@ -1,12 +1,13 @@
+
 export type Song = {
   id: string;
   title: string;
   artist: string;
   album: string;
   duration: number; // in seconds
-  url: string;
-  coverArt: string;
-  createdAt?: any; // To store Firestore timestamp
+  url: string; // This will be a data URL for simplicity
+  coverArt: string; // This will be a data URL
+  created_at: string;
 };
 
 export type Playlist = {
