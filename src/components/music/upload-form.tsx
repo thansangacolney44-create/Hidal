@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { getConversionSuggestion } from '@/app/upload/actions';
@@ -57,7 +57,7 @@ export function UploadForm() {
   const [coverArtPreview, setCoverArtPreview] = useState<string | null>(null);
 
   useEffect(() => {
-    if (coverArtFile) {
+    if (coverArtFile && coverArtFile instanceof File) {
         const reader = new FileReader();
         reader.onloadend = () => {
             setCoverArtPreview(reader.result as string);
@@ -212,7 +212,7 @@ export function UploadForm() {
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Audio File</FormLabel>
-                            {audioFile ? (
+                            {audioFile && audioFile instanceof File ? (
                                 <div className="p-3 rounded-md border bg-muted/50 flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <Music className="h-5 w-5 text-muted-foreground" />
