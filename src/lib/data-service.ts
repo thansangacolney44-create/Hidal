@@ -1,115 +1,102 @@
-import { db, storage } from './firebase';
-import { collection, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import type { Song } from '@/types';
 
-// Create a new type for song data to be stored in Firestore, omitting the id
-export type SongData = Omit<Song, 'id'>;
+'use server';
+
+import type { Song } from '@/types';
+import { getAudioDuration } from './utils';
+import { supabase } from './supabase-client';
 
 /**
- * Adds a new song to the Firestore database and uploads the associated files.
+ * Adds a new song to the Supabase database.
  * @param songData - The song metadata (title, artist, album).
- * @param audioFile - The audio file to be uploaded.
- * @param coverArtFile - The cover art image file to be uploaded.
- * @returns The newly created song object with its ID.
+ * @param audioFile - The audio file. This will be stored as a data URL.
+ * @param coverArtFile - The cover art image file. This will be stored as a data URL.
+ * @returns The newly created song object.
  */
 export async function addSong(
-  songData: Omit<SongData, 'url' | 'coverArt' | 'duration'>,
+  songData: Omit<Song, 'id' | 'url' | 'coverArt' | 'duration' | 'created_at'>,
   audioFile: File,
   coverArtFile: File
 ): Promise<Song> {
-  try {
-    // 1. Upload files to Firebase Storage
-    const audioFileName = `audio/${Date.now()}_${audioFile.name}`;
-    const coverArtFileName = `coverArt/${Date.now()}_${coverArtFile.name}`;
+    
+    // In a real app, you would upload files to a storage provider like Supabase Storage
+    // and store the URL. For simplicity in this prototype, we're using data URLs.
+    // This can lead to very large database entries and is not recommended for production.
+    const fileToDataUrl = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.onerror = (e) => reject(reader.error);
+            reader.readAsDataURL(file);
+        });
+    }
 
-    const audioRef = ref(storage, audioFileName);
-    const coverArtRef = ref(storage, coverArtFileName);
-
-    const [audioUpload, coverArtUpload] = await Promise.all([
-      uploadBytes(audioRef, audioFile),
-      uploadBytes(coverArtRef, coverArtFile),
+    const [url, coverArt, duration] = await Promise.all([
+        fileToDataUrl(audioFile),
+        fileToDataUrl(coverArtFile),
+        getAudioDuration(audioFile)
     ]);
 
-    // 2. Get download URLs for the uploaded files
-    const [url, coverArt] = await Promise.all([
-      getDownloadURL(audioUpload.ref),
-      getDownloadURL(coverArtUpload.ref),
-    ]);
-
-    // 3. Get audio duration
-    const duration = await getAudioDuration(audioFile);
-
-    // 4. Add song metadata to Firestore
-    const newSongData: SongData = {
-      ...songData,
-      url,
-      coverArt,
-      duration,
-      createdAt: new Date(),
+    const newSongData = {
+        ...songData,
+        url,
+        coverArt,
+        duration,
     };
 
-    const docRef = await addDoc(collection(db, 'songs'), newSongData);
+    const { data, error } = await supabase
+        .from('songs')
+        .insert([newSongData])
+        .select()
+        .single();
+    
+    if (error) {
+        console.error('Error adding song to Supabase:', error);
+        throw new Error(`Failed to add song: ${error.message}`);
+    }
 
-    return {
-      id: docRef.id,
-      ...newSongData,
-    };
-  } catch (error) {
-    console.error("Error adding song: ", error);
-    throw new Error("Failed to add new song.");
-  }
+    return data as Song;
 }
 
 /**
- * Fetches all songs from the Firestore database, ordered by creation date.
+ * Fetches all songs from Supabase, ordered by creation date.
  * @returns A promise that resolves to an array of songs.
  */
 export async function getAllSongs(): Promise<Song[]> {
-  try {
-    const songsQuery = query(collection(db, 'songs'), orderBy('createdAt', 'desc'));
-    const querySnapshot = await getDocs(songsQuery);
-    const songs = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    } as Song));
-    return songs;
-  } catch (error) {
-    console.error("Error fetching songs: ", error);
-    throw new Error("Failed to fetch songs.");
+  const { data, error } = await supabase
+    .from('songs')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching songs from Supabase:', error);
+    if (error.code === '42P01') { // "undefined_table"
+        throw new Error('The `songs` table does not exist. Please create it in your Supabase project.');
+    }
+    throw new Error('Could not retrieve songs from the database.');
   }
+
+  return data as Song[];
 }
 
 /**
- * Fetches recently added songs from Firestore.
+ * Fetches recently added songs from Supabase.
  * @param count - The number of recent songs to fetch.
  * @returns A promise that resolves to an array of songs.
  */
 export async function getRecentSongs(count: number = 6): Promise<Song[]> {
-    try {
-        const songsQuery = query(collection(db, 'songs'), orderBy('createdAt', 'desc'), limit(count));
-        const querySnapshot = await getDocs(songsQuery);
-        const songs = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-        } as Song));
-        return songs;
-    } catch (error) {
-        console.error("Error fetching recent songs: ", error);
-        throw new Error("Failed to fetch recent songs.");
+    const { data, error } = await supabase
+    .from('songs')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(count);
+
+  if (error) {
+    console.error('Error fetching recent songs from Supabase:', error);
+    if (error.code === '42P01') { // "undefined_table"
+        throw new Error('The `songs` table does not exist. Please create it in your Supabase project.');
     }
-}
+    throw new Error('Could not retrieve recent songs from the database.');
+  }
 
-
-// Helper to get audio duration
-function getAudioDuration(file: File): Promise<number> {
-    return new Promise((resolve) => {
-        const audio = document.createElement('audio');
-        audio.preload = 'metadata';
-        audio.onloadedmetadata = () => {
-            window.URL.revokeObjectURL(audio.src);
-            resolve(Math.round(audio.duration));
-        };
-        audio.src = URL.createObjectURL(file);
-    });
+  return data as Song[];
 }
