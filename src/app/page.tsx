@@ -1,7 +1,6 @@
 
 'use client'
 
-import { AppLayout } from '@/components/layout/app-layout';
 import { Card, CardContent } from '@/components/ui/card';
 import Image from 'next/image';
 import { PlayButton } from '@/components/music/play-button';
@@ -9,9 +8,15 @@ import { getRecentSongs } from '@/lib/data-service';
 import { useEffect, useState } from 'react';
 import type { Song } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
-const SongCard = ({ song }: { song: Song }) => {
+const SongCard = ({ song, playlist }: { song: Song, playlist: any }) => {
   const songAsPlaylist = { id: song.id, name: song.album, description: `Single by ${song.artist}`, songs: [song], coverArt: song.coverArt };
+  const songIndex = playlist.songs.findIndex((s: Song) => s.id === song.id);
+
   return (
     <div className="group relative">
       <Card className="overflow-hidden transition-all duration-300 hover:bg-card/60 hover:shadow-lg">
@@ -25,7 +30,7 @@ const SongCard = ({ song }: { song: Song }) => {
               data-ai-hint="album art"
             />
             <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <PlayButton playlist={songAsPlaylist} size="lg" />
+                <PlayButton playlist={playlist} trackIndex={songIndex} size="lg" />
              </div>
           </div>
           <div className="p-3">
@@ -51,6 +56,9 @@ const EmptyLibrary = () => (
     <div className="text-center py-16 rounded-lg border-2 border-dashed bg-muted/50">
         <h2 className="text-2xl font-semibold">Your Library is Empty</h2>
         <p className="text-muted-foreground mt-2">Upload your first track to get started!</p>
+        <Button asChild className="mt-4">
+            <Link href="/upload">Upload Music</Link>
+        </Button>
     </div>
 )
 
@@ -58,14 +66,19 @@ const EmptyLibrary = () => (
 export default function Home() {
     const [recentSongs, setRecentSongs] = useState<Song[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
 
     useEffect(() => {
         async function fetchSongs() {
             try {
                 const songs = await getRecentSongs();
                 setRecentSongs(songs);
-            } catch (error) {
-                console.error("Failed to load recent songs:", error);
+            } catch (err) {
+                console.error("Failed to load recent songs:", err);
+                if (err instanceof Error) {
+                  setError(err.message);
+                }
             } finally {
                 setIsLoading(false);
             }
@@ -73,8 +86,29 @@ export default function Home() {
         fetchSongs();
     }, []);
 
+    const libraryPlaylist = {
+        id: 'library-recent',
+        name: 'Recently Added',
+        description: 'Recently added songs',
+        songs: recentSongs,
+        coverArt: '',
+      };
+
+    if (error) {
+        return (
+            <div className="p-8">
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Error connecting to Database</AlertTitle>
+                    <AlertDescription>
+                        There was an issue fetching your music library. Please ensure your Supabase URL and key are correct in your `.env` file and that you have created the `songs` table in your database.
+                    </AlertDescription>
+                </Alert>
+            </div>
+        )
+    }
+
   return (
-    <AppLayout>
       <div className="p-4 sm:p-6 md:p-8 space-y-8">
         <WelcomeSection />
         
@@ -93,7 +127,7 @@ export default function Home() {
           ) : recentSongs.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {recentSongs.map((song) => (
-                   <SongCard key={song.id} song={song} />
+                   <SongCard key={song.id} song={song} playlist={libraryPlaylist} />
                 ))}
             </div>
           ) : (
@@ -101,6 +135,5 @@ export default function Home() {
           )}
         </section>
       </div>
-    </AppLayout>
   );
 }
