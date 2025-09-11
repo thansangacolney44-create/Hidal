@@ -5,7 +5,7 @@ import { UploadForm } from '@/components/music/upload-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { HardDriveDownload, AlertCircle } from 'lucide-react';
+import { HardDriveDownload, AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useState, useEffect } from 'react';
 
@@ -28,7 +28,11 @@ export default function UploadPage() {
     }, []);
 
     if (isLoading) {
-        return null; // Or a loading spinner
+        return (
+            <div className="flex justify-center items-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+        );
     }
 
     if (!isDbReady) {
@@ -42,7 +46,7 @@ export default function UploadPage() {
                     </AlertDescription>
                 </Alert>
             </div>
-        )
+        );
     }
 
   return (
@@ -75,7 +79,7 @@ export default function UploadPage() {
                 <CardDescription>
                   Connect your Dropbox account to directly access your music.
                 </CardDescription>
-              </Header>
+              </CardHeader>
               <CardContent>
                 <Button className="w-full" asChild>
                   <Link href="/import/dropbox">
