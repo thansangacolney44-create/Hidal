@@ -1,7 +1,10 @@
+
 "use client";
 
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
 import type { Song, Playlist } from '@/types';
+import { getDropboxTemporaryLink } from '@/lib/data-service';
+import { useToast } from '@/hooks/use-toast';
 
 interface MusicPlayerContextType {
   playlist: Playlist | null;
@@ -30,10 +33,18 @@ export const MusicPlayerProvider = ({ children }: { children: React.ReactNode })
   const [volume, setVolumeState] = useState(0.75);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const { toast } = useToast();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const currentTrack = playlist?.songs[currentTrackIndex] || null;
+
+  const playNext = useCallback(() => {
+    if (!playlist) return;
+    const nextIndex = (currentTrackIndex + 1) % playlist.songs.length;
+    setCurrentTrackIndex(nextIndex);
+    setIsPlaying(true);
+  }, [playlist, currentTrackIndex]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -47,6 +58,15 @@ export const MusicPlayerProvider = ({ children }: { children: React.ReactNode })
       audio.addEventListener('timeupdate', handleTimeUpdate);
       audio.addEventListener('durationchange', handleDurationChange);
       audio.addEventListener('ended', handleEnded);
+      audio.addEventListener('error', (e) => {
+        console.error("Audio playback error", e);
+        toast({
+            title: "Playback Error",
+            description: "Could not play the selected track.",
+            variant: "destructive"
+        })
+        setIsPlaying(false);
+      })
 
       return () => {
         audio.removeEventListener('timeupdate', handleTimeUpdate);
@@ -54,21 +74,42 @@ export const MusicPlayerProvider = ({ children }: { children: React.ReactNode })
         audio.removeEventListener('ended', handleEnded);
       };
     }
-  }, []);
+  }, [playNext, toast]);
 
   useEffect(() => {
-    if (audioRef.current && currentTrack) {
-      if (audioRef.current.src !== currentTrack.url) {
-        audioRef.current.src = currentTrack.url;
-        audioRef.current.load();
-      }
-      if (isPlaying) {
-        audioRef.current.play().catch(e => console.error("Playback failed", e));
-      } else {
-        audioRef.current.pause();
-      }
-    }
-  }, [currentTrack, isPlaying]);
+    const playTrack = async () => {
+        if (audioRef.current && currentTrack) {
+            try {
+                // The `url` field now stores the Dropbox file path
+                const temporaryLink = await getDropboxTemporaryLink(currentTrack.url);
+                if (audioRef.current.src !== temporaryLink) {
+                    audioRef.current.src = temporaryLink;
+                    audioRef.current.load();
+                }
+                if (isPlaying) {
+                    await audioRef.current.play();
+                } else {
+                    audioRef.current.pause();
+                }
+            } catch (error) {
+                console.error("Failed to get temporary link and play:", error);
+                toast({
+                    title: "Playback Error",
+                    description: "Failed to load track from Dropbox.",
+                    variant: "destructive"
+                });
+                setIsPlaying(false);
+            }
+        } else if (!currentTrack) {
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.src = "";
+            }
+            setIsPlaying(false);
+        }
+    };
+    playTrack();
+  }, [currentTrack, isPlaying, toast]);
   
   useEffect(() => {
     if (audioRef.current) {
@@ -87,8 +128,12 @@ export const MusicPlayerProvider = ({ children }: { children: React.ReactNode })
     if (audioRef.current && audioRef.current.src) {
         audioRef.current.play().catch(e => console.error("Playback failed", e));
         setIsPlaying(true);
+    } else if (playlist && playlist.songs.length > 0 && currentTrackIndex === -1) {
+        // If nothing is loaded, play the first song of the playlist
+        setCurrentTrackIndex(0);
+        setIsPlaying(true);
     }
-  }, []);
+  }, [playlist, currentTrackIndex]);
 
   const pause = useCallback(() => {
     if(audioRef.current) {
@@ -98,23 +143,23 @@ export const MusicPlayerProvider = ({ children }: { children: React.ReactNode })
   }, []);
 
   const togglePlayPause = useCallback(() => {
-    if (isPlaying) {
-      pause();
-    } else {
-      play();
+    if (currentTrack) {
+        if (isPlaying) {
+            pause();
+        } else {
+            play();
+        }
+    } else if (playlist && playlist.songs.length > 0) {
+        // No track is active, so start the playlist
+        loadPlaylist(playlist, 0);
     }
-  }, [isPlaying, pause, play]);
-
-  const playNext = useCallback(() => {
-    if (!playlist) return;
-    const nextIndex = (currentTrackIndex + 1) % playlist.songs.length;
-    setCurrentTrackIndex(nextIndex);
-  }, [playlist, currentTrackIndex]);
+  }, [isPlaying, pause, play, currentTrack, playlist, loadPlaylist]);
 
   const playPrev = useCallback(() => {
     if (!playlist) return;
     const prevIndex = (currentTrackIndex - 1 + playlist.songs.length) % playlist.songs.length;
     setCurrentTrackIndex(prevIndex);
+    setIsPlaying(true);
   }, [playlist, currentTrackIndex]);
 
   const setVolume = useCallback((newVolume: number) => {
@@ -123,7 +168,7 @@ export const MusicPlayerProvider = ({ children }: { children: React.ReactNode })
   }, []);
   
   const seek = useCallback((time: number) => {
-    if (audioRef.current) {
+    if (audioRef.current && isFinite(time)) {
       audioRef.current.currentTime = time;
       setCurrentTime(time);
     }
