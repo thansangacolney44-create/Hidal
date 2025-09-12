@@ -1,138 +1,52 @@
-
-'use client'
-
-import { Card, CardContent } from '@/components/ui/card';
-import Image from 'next/image';
-import { PlayButton } from '@/components/music/play-button';
-import { getRecentSongs } from '@/lib/data-service';
-import { useEffect, useState } from 'react';
-import type { Song } from '@/types';
-import { Skeleton } from '@/components/ui/skeleton';
+import { MediaCard } from '@/components/media/media-card';
+import { getMedia, getPlaylists } from '@/lib/firebase/media';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
-import { useAuth } from '@/contexts/auth-context';
 
-const SongCard = ({ song, playlist }: { song: Song, playlist: any }) => {
-  const songIndex = playlist.songs.findIndex((s: Song) => s.id === song.id);
+export default async function Home() {
+  const media = await getMedia();
+  const playlists = await getPlaylists();
 
   return (
-    <div className="group relative">
-      <Card className="overflow-hidden transition-all duration-300 hover:bg-card/60 hover:shadow-lg">
-        <CardContent className="p-0">
-          <div className="relative aspect-square">
-            <Image
-              src={song.coverArt}
-              alt={song.album || 'Album cover'}
-              fill
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
-              data-ai-hint="album art"
-            />
-            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <PlayButton playlist={playlist} trackIndex={songIndex} size="lg" />
-             </div>
-          </div>
-          <div className="p-3">
-            <h3 className="font-semibold truncate">{song.title}</h3>
-            <p className="text-sm text-muted-foreground truncate">{song.artist}</p>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="space-y-12">
+      <section>
+        <h2 className="text-3xl font-bold tracking-tight mb-6">Recently Added</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          {media.slice(0, 6).map((item) => (
+            <MediaCard key={item.id} media={item} />
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-3xl font-bold tracking-tight mb-6">Featured Playlists</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {playlists.map((playlist) => (
+            <Link href={`/playlist/${playlist.id}`} key={playlist.id} className="group relative">
+              <div className="aspect-square w-full overflow-hidden rounded-lg bg-card group-hover:opacity-80 transition-opacity">
+                <img
+                  src={playlist.albumArtUrl}
+                  alt={playlist.title}
+                  className="h-full w-full object-cover"
+                  data-ai-hint={playlist.imageHint}
+                />
+              </div>
+              <div className="mt-2">
+                <h3 className="font-semibold text-foreground truncate">{playlist.title}</h3>
+                <p className="text-sm text-muted-foreground">{playlist.description}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+      
+       <section>
+        <h2 className="text-3xl font-bold tracking-tight mb-6">All Content</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          {media.map((item) => (
+            <MediaCard key={item.id} media={item} />
+          ))}
+        </div>
+      </section>
     </div>
-  );
-}
-
-const WelcomeSection = () => (
-    <div className="space-y-2">
-      <h1 className="text-3xl md:text-4xl font-bold tracking-tighter text-primary">Welcome to HidalWave</h1>
-      <p className="text-muted-foreground max-w-2xl">
-        Your new favorite place for music. Discover tracks from artists around the world.
-      </p>
-    </div>
-)
-
-const EmptyLibrary = () => (
-    <div className="text-center py-16 rounded-lg border-2 border-dashed bg-muted/50">
-        <h2 className="text-2xl font-semibold">The stage is empty...</h2>
-        <p className="text-muted-foreground mt-2">Be the first to upload a track and get the party started!</p>
-        <Button asChild className="mt-4">
-            <Link href="/upload">Upload Music</Link>
-        </Button>
-    </div>
-)
-
-
-export default function Home() {
-    const [recentSongs, setRecentSongs] = useState<Song[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        async function fetchSongs() {
-            try {
-                const songs = await getRecentSongs();
-                setRecentSongs(songs);
-            } catch (err) {
-                console.error("Failed to load recent songs:", err);
-                if (err instanceof Error) {
-                  setError(err.message);
-                }
-            } finally {
-                setIsLoading(false);
-            }
-        }
-        fetchSongs();
-    }, []);
-
-    const recentSongsPlaylist = {
-        id: 'home-recent',
-        name: 'Recently Added',
-        description: 'The latest tracks on the platform',
-        songs: recentSongs,
-        coverArt: '',
-      };
-
-    if (error) {
-        return (
-            <div className="p-8">
-                <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Error Loading Music</AlertTitle>
-                    <AlertDescription>
-                        {error}
-                    </AlertDescription>
-                </Alert>
-            </div>
-        )
-    }
-
-  return (
-      <div className="p-4 sm:p-6 md:p-8 space-y-8">
-        <WelcomeSection />
-        
-        <section>
-          <h2 className="text-2xl font-semibold mb-4">Recently Added</h2>
-          {isLoading ? (
-             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                {Array.from({length: 12}).map((_, i) => (
-                    <div key={i} className="space-y-2">
-                        <Skeleton className="aspect-square rounded-lg" />
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-4 w-1/2" />
-                    </div>
-                ))}
-             </div>
-          ) : recentSongs.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                {recentSongs.map((song) => (
-                   <SongCard key={song.id} song={song} playlist={recentSongsPlaylist} />
-                ))}
-            </div>
-          ) : (
-            <EmptyLibrary />
-          )}
-        </section>
-      </div>
   );
 }
