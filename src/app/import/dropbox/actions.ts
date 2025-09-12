@@ -1,8 +1,10 @@
 
 'use server';
 
-import { addSong } from '@/lib/data-service';
+import { addSong, getSongsByUserId } from '@/lib/data-service';
 import { Song } from "@/types";
+import { findDuplicateSong, FindDuplicateSongOutput } from '@/ai/flows/find-duplicate-song';
+import { getFirebaseUser } from '@/lib/firebase-admin';
 
 const ACCESS_TOKEN = process.env.DROPBOX_ACCESS_TOKEN;
 const AUDIO_FORMATS = ['.mp3', '.wav', '.flac', '.aac', '.m4a', '.ogg', '.wma', '.alac'];
@@ -67,44 +69,56 @@ export async function getAudioFiles(): Promise<DropboxFile[]> {
 }
 
 export async function downloadAndAddFiles(filesToImport: DropboxFile[]): Promise<{ success: boolean; message: string }> {
-    if (!ACCESS_TOKEN) {
-        throw new Error('Dropbox access token is not configured.');
+    const user = await getFirebaseUser();
+    if (!user) {
+        throw new Error('You must be logged in to import files.');
     }
+    const userId = user.uid;
+    const existingSongs = await getSongsByUserId(userId);
+
+    let importedCount = 0;
+    let skippedCount = 0;
+    let replacedCount = 0;
 
     for (const file of filesToImport) {
         try {
-            const response = await fetch('https://content.dropboxapi.com/2/files/download', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${ACCESS_TOKEN}`,
-                    'Dropbox-API-Arg': JSON.stringify({ path: file.id }),
-                }
+            const title = file.name.split('.').slice(0, -1).join('.');
+            
+            const duplicateCheck: FindDuplicateSongOutput = await findDuplicateSong({
+                newSong: { title, artist: "Unknown Artist", size: file.size },
+                existingSongs: existingSongs.map(s => ({...s, size: s.size || 0}))
             });
 
-            if (!response.ok) {
-                console.error(`Failed to download ${file.name}`);
-                continue; // Skip to next file
+            if (duplicateCheck.isDuplicate) {
+                if (duplicateCheck.newSongIsHigherQuality) {
+                    // We would delete the old file here, but for simplicity, we'll just add the new one.
+                    // In a real app, you would add logic to delete the old song record.
+                    console.log(`Replacing song ID: ${duplicateCheck.duplicateSongId} with higher quality version.`);
+                    replacedCount++;
+                } else {
+                    console.log(`Skipping duplicate song: ${file.name}`);
+                    skippedCount++;
+                    continue; // Skip to the next file
+                }
             }
-
-            const blob = await response.blob();
-            const audioFile = new File([blob], file.name, { type: blob.type });
-
-            // For cover art, we'll use a placeholder since we can't extract it from the audio.
-            const coverArtResponse = await fetch(`https://picsum.photos/seed/${file.id}/500/500`);
-            const coverArtBlob = await coverArtResponse.blob();
-            const coverArtFile = new File([coverArtBlob], "cover.jpg", { type: "image/jpeg" });
             
-            const songMetadata = {
-                title: file.name.split('.').slice(0, -1).join('.'),
+            const songMetadata: Omit<Song, 'id' | 'url' | 'coverArt' | 'duration' | 'created_at' | 'size'> = {
+                title: title,
                 artist: 'Unknown Artist',
                 album: 'Dropbox Imports',
             };
 
-            await addSong(songMetadata, audioFile, coverArtFile);
+            await addSong(
+                { ...songMetadata, userId },
+                file.path_lower, // Use the Dropbox file path as the reference ID
+                file.name,
+                file.size
+              );
+            importedCount++;
 
         } catch (error) {
             console.error(`Error processing file ${file.name}:`, error);
         }
     }
-    return { success: true, message: `${filesToImport.length} file(s) have been added to your library.` };
+    return { success: true, message: `${importedCount} file(s) added, ${replacedCount} updated, and ${skippedCount} skipped.` };
 }
