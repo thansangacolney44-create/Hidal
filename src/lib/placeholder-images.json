@@ -1,0 +1,76 @@
+{
+  "placeholderImages": [
+    {
+      "id": "album-1",
+      "description": "Abstract musical notes",
+      "imageUrl": "https://picsum.photos/seed/album1/400/400",
+      "imageHint": "abstract music"
+    },
+    {
+      "id": "album-2",
+      "description": "Colorful sound waves",
+      "imageUrl": "https://picsum.photos/seed/album2/400/400",
+      "imageHint": "ambient soundscape"
+    },
+    {
+      "id": "album-3",
+      "description": "Geometric patterns with a retro vibe",
+      "imageUrl": "https://picsum.photos/seed/album3/400/400",
+      "imageHint": "electronic vibes"
+    },
+    {
+      "id": "video-1",
+      "description": "A vibrant, blurry concert stage",
+      "imageUrl": "https://picsum.photos/seed/video1/400/225",
+      "imageHint": "live performance"
+    },
+    {
+      "id": "video-2",
+      "description": "A cinematic shot of a person walking in a city",
+      "imageUrl": "https://picsum.photos/seed/video2/400/225",
+      "imageHint": "music video"
+    },
+    {
+      "id": "album-4",
+      "description": "A minimalist design with a single line",
+      "imageUrl": "https://picsum.photos/seed/album4/400/400",
+      "imageHint": "indie rock"
+    },
+    {
+      "id": "album-5",
+      "description": "A classic painting reimagined",
+      "imageUrl": "https://picsum.photos/seed/album5/400/400",
+      "imageHint": "classical strings"
+    },
+    {
+      "id": "album-6",
+      "description": "An explosion of colors and shapes",
+      "imageUrl": "https://picsum.photos/seed/album6/400/400",
+      "imageHint": "jazz fusion"
+    },
+    {
+      "id": "playlist-1",
+      "description": "Chill vibes playlist cover",
+      "imageUrl": "https://picsum.photos/seed/playlist1/400/400",
+      "imageHint": "chill abstract"
+    },
+    {
+      "id": "playlist-2",
+      "description": "Upbeat workout playlist cover",
+      "imageUrl": "https://picsum.photos/seed/playlist2/400/400",
+      "imageHint": "energetic abstract"
+    },
+    {
+      "id": "playlist-3",
+      "description": "Late night focus playlist cover",
+      "imageUrl": "https://picsum.photos/seed/playlist3/400/400",
+      "imageHint": "dark moody"
+    },
+    {
+      "id": "playlist-4",
+      "description": "Indie discoveries playlist cover",
+      "imageUrl": "https://picsum.photos/seed/playlist4/400/400",
+      "imageHint": "vintage texture"
+    }
+  ]
+}
