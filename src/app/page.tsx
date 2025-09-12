@@ -12,9 +12,9 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
 
 const SongCard = ({ song, playlist }: { song: Song, playlist: any }) => {
-  const songAsPlaylist = { id: song.id, name: song.album, description: `Single by ${song.artist}`, songs: [song], coverArt: song.coverArt };
   const songIndex = playlist.songs.findIndex((s: Song) => s.id === song.id);
 
   return (
@@ -47,15 +47,15 @@ const WelcomeSection = () => (
     <div className="space-y-2">
       <h1 className="text-3xl md:text-4xl font-bold tracking-tighter text-primary">Welcome to HidalWave</h1>
       <p className="text-muted-foreground max-w-2xl">
-        Your personal high-fidelity music sanctuary. Upload your tracks and immerse yourself in pure sound.
+        Your new favorite place for music. Discover tracks from artists around the world.
       </p>
     </div>
 )
 
 const EmptyLibrary = () => (
     <div className="text-center py-16 rounded-lg border-2 border-dashed bg-muted/50">
-        <h2 className="text-2xl font-semibold">Your Library is Empty</h2>
-        <p className="text-muted-foreground mt-2">Upload your first track to get started!</p>
+        <h2 className="text-2xl font-semibold">The stage is empty...</h2>
+        <p className="text-muted-foreground mt-2">Be the first to upload a track and get the party started!</p>
         <Button asChild className="mt-4">
             <Link href="/upload">Upload Music</Link>
         </Button>
@@ -67,7 +67,6 @@ export default function Home() {
     const [recentSongs, setRecentSongs] = useState<Song[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
 
     useEffect(() => {
         async function fetchSongs() {
@@ -86,10 +85,10 @@ export default function Home() {
         fetchSongs();
     }, []);
 
-    const libraryPlaylist = {
-        id: 'library-recent',
+    const recentSongsPlaylist = {
+        id: 'home-recent',
         name: 'Recently Added',
-        description: 'Recently added songs',
+        description: 'The latest tracks on the platform',
         songs: recentSongs,
         coverArt: '',
       };
@@ -99,9 +98,9 @@ export default function Home() {
             <div className="p-8">
                 <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Error connecting to Database</AlertTitle>
+                    <AlertTitle>Error Loading Music</AlertTitle>
                     <AlertDescription>
-                        There was an issue fetching your music library. Please ensure your Supabase URL and key are correct in your `.env` file and that you have created the `songs` table in your database.
+                        {error}
                     </AlertDescription>
                 </Alert>
             </div>
@@ -116,7 +115,7 @@ export default function Home() {
           <h2 className="text-2xl font-semibold mb-4">Recently Added</h2>
           {isLoading ? (
              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                {Array.from({length: 6}).map((_, i) => (
+                {Array.from({length: 12}).map((_, i) => (
                     <div key={i} className="space-y-2">
                         <Skeleton className="aspect-square rounded-lg" />
                         <Skeleton className="h-4 w-3/4" />
@@ -127,7 +126,7 @@ export default function Home() {
           ) : recentSongs.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {recentSongs.map((song) => (
-                   <SongCard key={song.id} song={song} playlist={libraryPlaylist} />
+                   <SongCard key={song.id} song={song} playlist={recentSongsPlaylist} />
                 ))}
             </div>
           ) : (
